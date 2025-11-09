@@ -1,0 +1,379 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta PERT/CPM Completa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    
+    <!-- Tu archivo de estilos -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-xl shadow-2xl p-8">
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+                        <svg class="text-indigo-600" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="6" y1="3" x2="6" y2="15"></line>
+                            <circle cx="18" cy="6" r="3"></circle>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <path d="M18 9a9 9 0 0 1-9 9"></path>
+                        </svg>
+                        Método PERT/CPM
+                    </h1>
+                    <p class="text-gray-600">Análisis de Ruta Crítica y Gestión de Proyectos</p>
+                </div>
+                <div class="text-right w-full md:w-auto">
+                    <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
+                        📅 Fecha de Inicio
+                    </label>
+                    <input 
+                        type="date" 
+                        id="start-date" 
+                        class="w-full md:w-auto px-4 py-2 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        aria-label="Fecha de inicio del proyecto"
+                    >
+                </div>
+            </div>
+
+            <!-- Navegación por pestañas -->
+            <nav class="flex flex-wrap gap-2 mb-6 border-b" role="tablist" aria-label="Navegación principal">
+                <button 
+                    data-tab="activities" 
+                    id="tab-activities" 
+                    class="px-4 py-2 font-medium transition tab-active"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="content-activities"
+                >
+                    📋 Actividades
+                </button>
+                <button 
+                    data-tab="network" 
+                    id="tab-network" 
+                    class="px-4 py-2 font-medium transition tab-inactive"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="content-network"
+                >
+                    🔗 Diagrama de Red
+                </button>
+                <button 
+                    data-tab="gantt" 
+                    id="tab-gantt" 
+                    class="px-4 py-2 font-medium transition tab-inactive"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="content-gantt"
+                >
+                    📊 Diagrama de Gantt
+                </button>
+                <button 
+                    data-tab="probability" 
+                    id="tab-probability" 
+                    class="px-4 py-2 font-medium transition tab-inactive"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="content-probability"
+                >
+                    📈 Análisis Probabilístico
+                </button>
+            </nav>
+
+            <!-- CONTENIDO: Pestaña de Actividades -->
+            <div id="content-activities" class="tab-content" role="tabpanel">
+                <div class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <h2 class="text-2xl font-bold text-gray-800">Definición de Actividades</h2>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        <button 
+                            id="btn-add-activity" 
+                            class="btn-primary flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium"
+                            title="Agregar nueva actividad"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Agregar
+                        </button>
+                        <button 
+                            id="btn-load-example" 
+                            class="bg-gray-600 hover:bg-gray-700 flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                            title="Cargar proyecto de ejemplo"
+                        >
+                            📝 Ejemplo
+                        </button>
+                        <button 
+                            id="btn-clear-all" 
+                            class="btn-danger flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium"
+                            title="Borrar todas las actividades"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Borrar Todo
+                        </button>
+                        <button 
+                            id="btn-save-project" 
+                            class="bg-green-600 hover:bg-green-700 flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+                            title="Guardar proyecto"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            Guardar
+                        </button>
+                        <button 
+                            id="btn-load-project" 
+                            class="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+                            title="Cargar proyecto guardado"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Cargar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de actividades -->
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-indigo-100">
+                                <th class="border border-indigo-300 p-3 text-left">Nombre</th>
+                                <th class="border border-indigo-300 p-3 text-left">Predecesores</th>
+                                <th class="border border-indigo-300 p-3 text-center">a (Optimista)</th>
+                                <th class="border border-indigo-300 p-3 text-center">m (Más Probable)</th>
+                                <th class="border border-indigo-300 p-3 text-center">b (Pesimista)</th>
+                                <th class="border border-indigo-300 p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activities-table">
+                            <tr>
+                                <td colspan="6" class="text-center p-4 text-gray-500">
+                                    No hay actividades. Haz clic en "Agregar" o "Ejemplo"
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Resultados del análisis -->
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        🎯 Resultados del Análisis
+                    </h3>
+
+                    <!-- Cards de resumen -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="card-stat bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg shadow-lg">
+                            <p class="text-sm opacity-90">Duración del Proyecto</p>
+                            <p class="text-3xl font-bold" id="project-duration">0 días</p>
+                            <p class="text-sm mt-1" id="project-end-date">Fecha fin: -</p>
+                        </div>
+                        <div class="card-stat bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-lg shadow-lg">
+                            <p class="text-sm opacity-90">Desviación Estándar (σ)</p>
+                            <p class="text-3xl font-bold" id="project-sigma">0 días</p>
+                            <p class="text-sm mt-1">Varianza del proyecto</p>
+                        </div>
+                        <div class="card-stat bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-lg shadow-lg">
+                            <p class="text-sm opacity-90">Ruta(s) Crítica(s)</p>
+                            <p class="text-lg font-bold" id="critical-path">-</p>
+                            <p class="text-sm mt-1" id="critical-count">0 actividades</p>
+                        </div>
+                        <div class="card-stat bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-lg shadow-lg">
+                            <p class="text-sm opacity-90">Total Actividades</p>
+                            <p class="text-3xl font-bold" id="total-activities">0</p>
+                            <p class="text-sm mt-1" id="critical-activities">0 críticas</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de resultados detallados -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-indigo-100">
+                                    <th class="border border-indigo-300 p-2">Act.</th>
+                                    <th class="border border-indigo-300 p-2">TE</th>
+                                    <th class="border border-indigo-300 p-2">σ</th>
+                                    <th class="border border-indigo-300 p-2">ES</th>
+                                    <th class="border border-indigo-300 p-2">EF</th>
+                                    <th class="border border-indigo-300 p-2">LS</th>
+                                    <th class="border border-indigo-300 p-2">LF</th>
+                                    <th class="border border-indigo-300 p-2">Holgura</th>
+                                    <th class="border border-indigo-300 p-2">Fecha Inicio</th>
+                                    <th class="border border-indigo-300 p-2">Fecha Fin</th>
+                                    <th class="border border-indigo-300 p-2">Crítica</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-table">
+                                <tr>
+                                    <td colspan="11" class="text-center p-4 text-gray-500">
+                                        No hay datos para mostrar
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO: Diagrama de Red -->
+            <div id="content-network" class="tab-content hidden" role="tabpanel">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">🔗 Diagrama de Red AON</h2>
+                <div 
+                    id="network-diagram" 
+                    class="bg-gray-50 rounded-lg border-2 border-gray-300" 
+                    style="width: 100%; height: 600px; overflow: auto;"
+                ></div>
+                
+                <div class="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
+                    <p class="flex items-center gap-2">
+                        <span class="inline-block w-4 h-4 bg-red-100 border-2 border-red-500 rounded"></span> 
+                        Actividades Críticas
+                    </p>
+                    <p class="flex items-center gap-2">
+                        <span class="inline-block w-4 h-4 bg-blue-100 border-2 border-indigo-600 rounded"></span> 
+                        Actividades No Críticas
+                    </p>
+                </div>
+            </div>
+
+            <!-- CONTENIDO: Diagrama de Gantt -->
+            <div id="content-gantt" class="tab-content hidden" role="tabpanel">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">📊 Diagrama de Gantt</h2>
+                <div class="bg-gray-50 p-6 rounded-lg border-2 border-gray-300" style="overflow-x: auto;">
+                    <svg id="gantt-diagram"></svg>
+                </div>
+                
+                <div class="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
+                    <p class="flex items-center gap-2">
+                        <span class="inline-block w-6 h-4 bg-red-500 rounded"></span> 
+                        Actividades Críticas
+                    </p>
+                    <p class="flex items-center gap-2">
+                        <span class="inline-block w-6 h-4 bg-indigo-600 rounded"></span> 
+                        Actividades No Críticas
+                    </p>
+                    <p class="flex items-center gap-2">
+                         <span class="inline-block w-6 h-4 bg-gray-200 border border-gray-500 border-dashed rounded"></span> 
+                         Holgura
+                    </p>
+                </div>
+            </div>
+
+            <!-- CONTENIDO: Análisis Probabilístico -->
+            <div id="content-probability" class="tab-content hidden" role="tabpanel">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">📈 Análisis Probabilístico</h2>
+
+                <!-- Calculadoras -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Calculadora 1: Probabilidad para X días -->
+                    <div class="bg-blue-50 p-6 rounded-lg border-2 border-blue-300">
+                        <h3 class="font-bold text-lg mb-4">¿Probabilidad de terminar en X días?</h3>
+                        <div class="mb-4">
+                            <label for="target-days" class="block text-sm font-medium mb-2">
+                                Días objetivo:
+                            </label>
+                            <input 
+                                type="number" 
+                                id="target-days" 
+                                placeholder="Ej: 12" 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+                                step="0.1"
+                                aria-label="Días objetivo para calcular probabilidad"
+                            >
+                        </div>
+                        <div id="probability-result" class="bg-white p-4 rounded-lg shadow hidden">
+                            <p class="text-sm text-gray-600 mb-2" id="z-formula"></p>
+                            <p class="text-sm text-gray-600 mb-2" id="z-value"></p>
+                            <div class="text-center mt-4">
+                                <p class="text-3xl font-bold text-blue-600" id="probability-percent">0%</p>
+                                <p class="text-sm text-gray-600 mt-2" id="probability-text"></p>
+                                <p class="text-sm font-medium text-gray-700 mt-2" id="probability-date"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculadora 2: Días para Y% probabilidad -->
+                    <div class="bg-green-50 p-6 rounded-lg border-2 border-green-300">
+                        <h3 class="font-bold text-lg mb-4">¿Días para Y% de probabilidad?</h3>
+                        <div class="mb-4">
+                            <label for="target-prob" class="block text-sm font-medium mb-2">
+                                Probabilidad objetivo (%):
+                            </label>
+                            <input 
+                                type="number" 
+                                id="target-prob" 
+                                placeholder="Ej: 95" 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500" 
+                                step="1" 
+                                min="1" 
+                                max="99"
+                                aria-label="Probabilidad objetivo en porcentaje"
+                            >
+                        </div>
+                        <div id="days-result" class="bg-white p-4 rounded-lg shadow hidden">
+                            <p class="text-sm text-gray-600 mb-2" id="z-inverse"></p>
+                            <p class="text-sm text-gray-600 mb-2" id="days-formula"></p>
+                            <div class="text-center mt-4">
+                                <p class="text-3xl font-bold text-green-600" id="days-needed">0 días</p>
+                                <p class="text-sm text-gray-600 mt-2" id="days-text"></p>
+                                <p class="text-sm font-medium text-gray-700 mt-2" id="days-date"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análisis de rangos -->
+                <div class="bg-purple-50 p-6 rounded-lg border-2 border-purple-300 mb-6">
+                    <h3 class="font-bold text-lg mb-4">Análisis de Rangos de Tiempo</h3>
+                    <div id="range-analysis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+                </div>
+
+                <!-- Tabla de probabilidades -->
+                <div class="bg-gray-50 p-6 rounded-lg border-2 border-gray-300">
+                    <h3 class="font-bold text-lg mb-3">📊 Tabla de Probabilidades</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-purple-100">
+                                    <th class="border border-purple-300 p-2">Días</th>
+                                    <th class="border border-purple-300 p-2">Fecha</th>
+                                    <th class="border border-purple-300 p-2">Z-Score</th>
+                                    <th class="border border-purple-300 p-2">Probabilidad (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="probability-table">
+                                <tr>
+                                    <td colspan="4" class="text-center p-4 text-gray-500">
+                                        No hay datos para mostrar
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input file oculto para cargar proyectos -->
+    <input type="file" id="file-loader" accept=".json" class="hidden" aria-hidden="true">
+
+    <!-- Scripts - Usar type="module" para ES6 -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
