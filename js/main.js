@@ -55,9 +55,6 @@ function setupEventListeners() {
     });
     
     document.getElementById('file-loader')?.addEventListener('change', handleFileSelect);
-
-    // NOTA: Se eliminaron los listeners duplicados para target-days y target-prob
-    //       ya que el ProbabilityController los gestiona internamente.
 }
 
 function changeTab(tabName) {
@@ -94,6 +91,9 @@ function renderCurrentTab() {
     }
 }
 
+/**
+ * Inicializa A, M, B como 0 (vacío) para permitir el auto-relleno.
+ */
 function addActivity() {
     const newId = appState.activities.length > 0 
         ? Math.max(...appState.activities.map(a => a.id)) + 1 
@@ -103,7 +103,7 @@ function addActivity() {
         newId,
         String.fromCharCode(64 + newId),
         '',
-        1, 2, 3
+        0, 0, 0 // Inicializar a 0 (se mostrará como vacío en la tabla)
     );
     
     appState.activities.push(newActivity);
@@ -140,16 +140,44 @@ function loadExample() {
     recalculateAndRender();
 }
 
+/**
+ * 🎯 Lógica Corregida: Auto-relleno (Tiempo Fijo)
+ * Rellena los otros dos campos (m y b si se edita a, etc.) SOLO si:
+ * 1. El valor ingresado es positivo.
+ * 2. Solo hay UN valor positivo definido entre a, m y b después de la edición.
+ */
 function updateActivity(id, field, value) {
     const activity = appState.activities.find(a => a.id === id);
     if (!activity) return;
     
+    const parsedValue = parseFloat(value) || 0;
+
     if (['a', 'm', 'b'].includes(field)) {
-        activity[field] = parseFloat(value) || 0;
+        // 1. Asignar el nuevo valor
+        activity[field] = parsedValue;
+        
+        // 2. Contar cuántos campos (a, m, b) tienen un valor > 0
+        const definedCount = ['a', 'm', 'b'].filter(f => activity[f] > 0).length;
+
+        // 3. Aplicar lógica de tiempo fijo: Si solo UNO tiene valor, rellenar los demás
+        if (definedCount === 1 && parsedValue > 0) {
+            // El usuario solo definió un valor. Asumimos tiempo fijo (A=M=B).
+            activity.a = parsedValue;
+            activity.m = parsedValue;
+            activity.b = parsedValue;
+            
+            // Rerenderizar la tabla inmediatamente para que el usuario vea el cambio
+            renderActivitiesTable(); 
+        } 
+        // Si definedCount es 2 o 3, el usuario está haciendo un cálculo PERT. No rellenamos.
+        // Si definedCount es 0, el usuario ingresó 0 o eliminó el valor. No rellenamos.
+
     } else {
+        // Campo diferente (nombre o predecesores)
         activity[field] = value;
     }
     
+    // Recalcular y renderizar los resultados de la red
     recalculateAndRender();
 }
 
@@ -178,6 +206,9 @@ function renderActivitiesTable() {
         return;
     }
     
+    // Función auxiliar: Muestra vacío si el valor es 0
+    const displayValue = (val) => val > 0 ? val : '';
+
     tbody.innerHTML = appState.activities.map(act => `
         <tr class="hover:bg-gray-50">
             <td class="border border-gray-300 p-2">
@@ -187,13 +218,13 @@ function renderActivitiesTable() {
                 <input type="text" value="${act.predecessors}" data-id="${act.id}" data-field="predecessors" placeholder="A,B" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300">
             </td>
             <td class="border border-gray-300 p-2">
-                <input type="number" value="${act.a}" data-id="${act.id}" data-field="a" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
+                <input type="number" value="${displayValue(act.a)}" data-id="${act.id}" data-field="a" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2">
-                <input type="number" value="${act.m}" data-id="${act.id}" data-field="m" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
+                <input type="number" value="${displayValue(act.m)}" data-id="${act.id}" data-field="m" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2">
-                <input type="number" value="${act.b}" data-id="${act.id}" data-field="b" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
+                <input type="number" value="${displayValue(act.b)}" data-id="${act.id}" data-field="b" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2 text-center">
                 <button data-delete-id="${act.id}" class="btn-delete-activity text-red-600 hover:text-red-800 transition p-1" title="Eliminar Actividad">
