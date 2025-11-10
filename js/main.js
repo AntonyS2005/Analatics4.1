@@ -1,16 +1,11 @@
-// ============================================
-// main.js - Punto de entrada de la aplicación
-// ============================================
-
 import { Activity } from './models/Activity.js';
 import { PertCalculator } from './services/PertCalculator.js';
 import { FileService } from './services/FileService.js';
 import { DateUtils } from './utils/DateUtils.js';
 import { NetworkDiagram } from './ui/NetworkDiagram.js'
 import { GanttDiagram } from './ui/GanttDiagram.js';
-import { ProbabilityService } from './services/ProbabilityService.js'; 
 import { ProbabilityController } from './ui/ProbabilityController.js';
-// Estado global de la aplicación
+
 const appState = {
     activities: [],
     calculations: null,
@@ -21,36 +16,27 @@ const appState = {
     probabilityController: null,
 };
 
-// ============================================
-// Inicialización
-// ============================================
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Iniciando aplicación PERT/CPM...');
     
-    // Configurar fecha inicial
     const today = DateUtils.getTodayISO();
     document.getElementById('start-date').value = today;
     appState.startDate = new Date(today);
+    
     const networkContainer = document.getElementById('network-diagram');
     const ganttContainer = document.getElementById('gantt-diagram');
-    // Crear las instancias de los renderers
+    
     appState.networkDiagram = new NetworkDiagram(networkContainer);
     appState.ganttDiagram = new GanttDiagram(ganttContainer);
     appState.probabilityController = new ProbabilityController(appState);
-    // Cargar ejemplo por defecto
-    loadExample();
     
-    // Configurar event listeners
+    loadExample();
     setupEventListeners();
     
     console.log('✅ Aplicación iniciada correctamente');
 });
 
-// ============================================
-// Event Listeners
-// ============================================
 function setupEventListeners() {
-    // Pestañas
     document.querySelectorAll('[data-tab]').forEach(button => {
         button.addEventListener('click', (e) => {
             const tab = e.currentTarget.getAttribute('data-tab');
@@ -58,10 +44,8 @@ function setupEventListeners() {
         });
     });
     
-    // Fecha de inicio
     document.getElementById('start-date')?.addEventListener('change', updateDates);
     
-    // Botones de actividades
     document.getElementById('btn-add-activity')?.addEventListener('click', addActivity);
     document.getElementById('btn-load-example')?.addEventListener('click', loadExample);
     document.getElementById('btn-clear-all')?.addEventListener('click', clearAllActivities);
@@ -70,41 +54,29 @@ function setupEventListeners() {
         document.getElementById('file-loader').click();
     });
     
-    // Input file para cargar proyectos
     document.getElementById('file-loader')?.addEventListener('change', handleFileSelect);
-    
-    // Calculadoras de probabilidad
-    document.getElementById('target-days')?.addEventListener('input', calculateProbability);
-    document.getElementById('target-prob')?.addEventListener('input', calculateDays);
+
+    // NOTA: Se eliminaron los listeners duplicados para target-days y target-prob
+    //       ya que el ProbabilityController los gestiona internamente.
 }
 
-// ============================================
-// Navegación de pestañas
-// ============================================
 function changeTab(tabName) {
     appState.currentTab = tabName;
     
-    // Actualizar botones y contenido
     ['activities', 'network', 'gantt', 'probability'].forEach(tab => {
         const btn = document.getElementById(`tab-${tab}`);
         const content = document.getElementById(`content-${tab}`);
         
         if (!btn || !content) return;
         
-        if (tab === tabName) {
-            btn.classList.add('tab-active');
-            btn.classList.remove('tab-inactive');
-            btn.setAttribute('aria-selected', 'true');
-            content.classList.remove('hidden');
-        } else {
-            btn.classList.remove('tab-active');
-            btn.classList.add('tab-inactive');
-            btn.setAttribute('aria-selected', 'false');
-            content.classList.add('hidden');
-        }
+        const isActive = tab === tabName;
+
+        btn.classList.toggle('tab-active', isActive);
+        btn.classList.toggle('tab-inactive', !isActive);
+        btn.setAttribute('aria-selected', isActive);
+        content.classList.toggle('hidden', !isActive);
     });
     
-    // Renderizar contenido de la pestaña activa
     renderCurrentTab();
 }
 
@@ -122,9 +94,6 @@ function renderCurrentTab() {
     }
 }
 
-// ============================================
-// Gestión de Actividades
-// ============================================
 function addActivity() {
     const newId = appState.activities.length > 0 
         ? Math.max(...appState.activities.map(a => a.id)) + 1 
@@ -134,9 +103,7 @@ function addActivity() {
         newId,
         String.fromCharCode(64 + newId),
         '',
-        1,
-        2,
-        3
+        1, 2, 3
     );
     
     appState.activities.push(newActivity);
@@ -186,15 +153,10 @@ function updateActivity(id, field, value) {
     recalculateAndRender();
 }
 
-// ============================================
-// Cálculos y Renderizado
-// ============================================
 function recalculateAndRender() {
-    // Calcular PERT/CPM
     const calculator = new PertCalculator(appState.activities);
     appState.calculations = calculator.calculate();
     
-    // Renderizar todas las vistas
     renderActivitiesTable();
     renderResultsTable();
     renderCurrentTab();
@@ -203,6 +165,8 @@ function recalculateAndRender() {
 function renderActivitiesTable() {
     const tbody = document.getElementById('activities-table');
     
+    if (!tbody) return;
+
     if (appState.activities.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -217,63 +181,22 @@ function renderActivitiesTable() {
     tbody.innerHTML = appState.activities.map(act => `
         <tr class="hover:bg-gray-50">
             <td class="border border-gray-300 p-2">
-                <input 
-                    type="text" 
-                    value="${act.name}"
-                    data-id="${act.id}"
-                    data-field="name"
-                    class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300"
-                >
+                <input type="text" value="${act.name}" data-id="${act.id}" data-field="name" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300">
             </td>
             <td class="border border-gray-300 p-2">
-                <input 
-                    type="text" 
-                    value="${act.predecessors}"
-                    data-id="${act.id}"
-                    data-field="predecessors"
-                    placeholder="A,B"
-                    class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300"
-                >
+                <input type="text" value="${act.predecessors}" data-id="${act.id}" data-field="predecessors" placeholder="A,B" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300">
             </td>
             <td class="border border-gray-300 p-2">
-                <input 
-                    type="number" 
-                    value="${act.a}"
-                    data-id="${act.id}"
-                    data-field="a"
-                    class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" 
-                    step="0.1" 
-                    min="0"
-                >
+                <input type="number" value="${act.a}" data-id="${act.id}" data-field="a" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2">
-                <input 
-                    type="number" 
-                    value="${act.m}"
-                    data-id="${act.id}"
-                    data-field="m"
-                    class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" 
-                    step="0.1" 
-                    min="0"
-                >
+                <input type="number" value="${act.m}" data-id="${act.id}" data-field="m" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2">
-                <input 
-                    type="number" 
-                    value="${act.b}"
-                    data-id="${act.id}"
-                    data-field="b"
-                    class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" 
-                    step="0.1" 
-                    min="0"
-                >
+                <input type="number" value="${act.b}" data-id="${act.id}" data-field="b" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2 text-center">
-                <button 
-                    data-delete-id="${act.id}"
-                    class="btn-delete-activity text-red-600 hover:text-red-800 transition p-1" 
-                    title="Eliminar Actividad"
-                >
+                <button data-delete-id="${act.id}" class="btn-delete-activity text-red-600 hover:text-red-800 transition p-1" title="Eliminar Actividad">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -283,7 +206,6 @@ function renderActivitiesTable() {
         </tr>
     `).join('');
     
-    // Agregar event listeners a los inputs
     tbody.querySelectorAll('.activity-input').forEach(input => {
         input.addEventListener('change', (e) => {
             const id = parseInt(e.target.getAttribute('data-id'));
@@ -292,7 +214,6 @@ function renderActivitiesTable() {
         });
     });
     
-    // Agregar event listeners a los botones de eliminar
     tbody.querySelectorAll('.btn-delete-activity').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const id = parseInt(e.currentTarget.getAttribute('data-delete-id'));
@@ -302,27 +223,20 @@ function renderActivitiesTable() {
 }
 
 function renderResultsTable() {
-    // Actualizar cards de resumen
     const endDate = DateUtils.addDays(appState.startDate, appState.calculations.projectDuration);
     
-    document.getElementById('project-duration').textContent = 
-        `${appState.calculations.projectDuration.toFixed(2)} días`;
-    document.getElementById('project-end-date').textContent = 
-        `Fecha fin: ${DateUtils.format(endDate)}`;
-    document.getElementById('project-sigma').textContent = 
-        `${appState.calculations.projectSigma.toFixed(2)} días`;
-    document.getElementById('critical-path').textContent = 
-        appState.calculations.criticalPath.join(' → ') || '-';
-    document.getElementById('critical-count').textContent = 
-        `${appState.calculations.criticalPath.length} actividades`;
-    document.getElementById('total-activities').textContent = 
-        appState.activities.length;
-    document.getElementById('critical-activities').textContent = 
-        `${appState.calculations.criticalPath.length} críticas`;
+    document.getElementById('project-duration').textContent = `${appState.calculations.projectDuration.toFixed(2)} días`;
+    document.getElementById('project-end-date').textContent = `Fecha fin: ${DateUtils.format(endDate)}`;
+    document.getElementById('project-sigma').textContent = `${appState.calculations.projectSigma.toFixed(2)} días`;
+    document.getElementById('critical-path').textContent = appState.calculations.criticalPath.join(' → ') || '-';
+    document.getElementById('critical-count').textContent = `${appState.calculations.criticalPath.length} actividades`;
+    document.getElementById('total-activities').textContent = appState.activities.length;
+    document.getElementById('critical-activities').textContent = `${appState.calculations.criticalPath.length} críticas`;
     
-    // Renderizar tabla de resultados
     const tbody = document.getElementById('results-table');
     
+    if (!tbody) return;
+
     if (appState.calculations.activities.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -358,14 +272,10 @@ function renderResultsTable() {
     }).join('');
 }
 
-// ============================================
-// Actualización de fechas
-// ============================================
 function updateDates() {
     const dateInput = document.getElementById('start-date').value;
     appState.startDate = new Date(dateInput);
     
-    // Solo re-renderizar lo necesario
     renderResultsTable();
     
     if (appState.currentTab === 'gantt') {
@@ -375,9 +285,6 @@ function updateDates() {
     }
 }
 
-// ============================================
-// Guardar/Cargar Proyecto
-// ============================================
 function saveProject() {
     try {
         FileService.saveActivities(appState.activities);
@@ -399,28 +306,19 @@ async function handleFileSelect(event) {
         alert('Error al cargar el proyecto: ' + error.message);
     }
     
-    // Limpiar input
     event.target.value = null;
 }
 
 function renderNetworkDiagram() {
-appState.networkDiagram.render(appState.calculations);
+    appState.networkDiagram.render(appState.calculations);
 }
 
 function renderGanttDiagram() {
-        appState.ganttDiagram.render(appState.calculations, appState.startDate);
+    appState.ganttDiagram.render(appState.calculations, appState.startDate);
 }
 
 function renderProbabilityAnalysis() {
- appState.probabilityController.render();
-}
-
-function calculateProbability() {
- appState.probabilityController.calculateProbability();
-}
-
-function calculateDays() {
- appState.probabilityController.calculateDays();
+    appState.probabilityController.render();
 }
 
 window.appState = appState;

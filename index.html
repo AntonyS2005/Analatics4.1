@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,13 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     
-    <!-- Tu archivo de estilos -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
     <div class="max-w-7xl mx-auto">
         <div class="bg-white rounded-xl shadow-2xl p-8">
-            <!-- Header -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
@@ -41,7 +38,6 @@
                 </div>
             </div>
 
-            <!-- Navegación por pestañas -->
             <nav class="flex flex-wrap gap-2 mb-6 border-b" role="tablist" aria-label="Navegación principal">
                 <button 
                     data-tab="activities" 
@@ -85,7 +81,6 @@
                 </button>
             </nav>
 
-            <!-- CONTENIDO: Pestaña de Actividades -->
             <div id="content-activities" class="tab-content" role="tabpanel">
                 <div class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <h2 class="text-2xl font-bold text-gray-800">Definición de Actividades</h2>
@@ -147,7 +142,6 @@
                     </div>
                 </div>
 
-                <!-- Tabla de actividades -->
                 <div class="overflow-x-auto">
                     <table class="w-full border-collapse">
                         <thead>
@@ -170,13 +164,11 @@
                     </table>
                 </div>
 
-                <!-- Resultados del análisis -->
                 <div class="mt-8">
                     <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                         🎯 Resultados del Análisis
                     </h3>
 
-                    <!-- Cards de resumen -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div class="card-stat bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg shadow-lg">
                             <p class="text-sm opacity-90">Duración del Proyecto</p>
@@ -200,7 +192,6 @@
                         </div>
                     </div>
 
-                    <!-- Tabla de resultados detallados -->
                     <div class="overflow-x-auto">
                         <table class="w-full border-collapse text-sm">
                             <thead>
@@ -230,7 +221,6 @@
                 </div>
             </div>
 
-            <!-- CONTENIDO: Diagrama de Red -->
             <div id="content-network" class="tab-content hidden" role="tabpanel">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">🔗 Diagrama de Red AON</h2>
                 <div 
@@ -251,7 +241,6 @@
                 </div>
             </div>
 
-            <!-- CONTENIDO: Diagrama de Gantt -->
             <div id="content-gantt" class="tab-content hidden" role="tabpanel">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">📊 Diagrama de Gantt</h2>
                 <div class="bg-gray-50 p-6 rounded-lg border-2 border-gray-300" style="overflow-x: auto;">
@@ -268,19 +257,16 @@
                         Actividades No Críticas
                     </p>
                     <p class="flex items-center gap-2">
-                         <span class="inline-block w-6 h-4 bg-gray-200 border border-gray-500 border-dashed rounded"></span> 
-                         Holgura
+                        <span class="inline-block w-6 h-4 bg-gray-200 border border-gray-500 border-dashed rounded"></span> 
+                        Holgura
                     </p>
                 </div>
             </div>
 
-            <!-- CONTENIDO: Análisis Probabilístico -->
             <div id="content-probability" class="tab-content hidden" role="tabpanel">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">📈 Análisis Probabilístico</h2>
 
-                <!-- Calculadoras -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Calculadora 1: Probabilidad para X días -->
                     <div class="bg-blue-50 p-6 rounded-lg border-2 border-blue-300">
                         <h3 class="font-bold text-lg mb-4">¿Probabilidad de terminar en X días?</h3>
                         <div class="mb-4">
@@ -307,7 +293,6 @@
                         </div>
                     </div>
 
-                    <!-- Calculadora 2: Días para Y% probabilidad -->
                     <div class="bg-green-50 p-6 rounded-lg border-2 border-green-300">
                         <h3 class="font-bold text-lg mb-4">¿Días para Y% de probabilidad?</h3>
                         <div class="mb-4">
@@ -337,13 +322,11 @@
                     </div>
                 </div>
 
-                <!-- Análisis de rangos -->
                 <div class="bg-purple-50 p-6 rounded-lg border-2 border-purple-300 mb-6">
                     <h3 class="font-bold text-lg mb-4">Análisis de Rangos de Tiempo</h3>
                     <div id="range-analysis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
                 </div>
 
-                <!-- Tabla de probabilidades -->
                 <div class="bg-gray-50 p-6 rounded-lg border-2 border-gray-300">
                     <h3 class="font-bold text-lg mb-3">📊 Tabla de Probabilidades</h3>
                     <div class="overflow-x-auto">
@@ -370,10 +353,8 @@
         </div>
     </div>
 
-    <!-- Input file oculto para cargar proyectos -->
     <input type="file" id="file-loader" accept=".json" class="hidden" aria-hidden="true">
 
-    <!-- Scripts - Usar type="module" para ES6 -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

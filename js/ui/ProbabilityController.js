@@ -9,58 +9,71 @@ export class ProbabilityController {
         this.appState = appState;
         
         // CORRECCIÓN CLAVE: Mapear los nombres internos del JS a los IDs reales del HTML
+        // ¡Asegúrate de que estos IDs existan en tu HTML!
         this.elements = {
             // Calculadora 1: Días -> Probabilidad
             targetDaysInput: document.getElementById('target-days'),
-            resultProbContainer: document.getElementById('probability-result'), // Contenedor principal
-            resultProb: document.getElementById('probability-percent'), // Porcentaje (%)
-            zValueOutput: document.getElementById('z-value'), // Valor Z
-            zFormulaOutput: document.getElementById('z-formula'), // Fórmula Z
-            probabilityText: document.getElementById('probability-text'), // Texto de resultado
-            probabilityDate: document.getElementById('probability-date'), // Fecha de resultado
+            resultProbContainer: document.getElementById('probability-result'),
+            resultProb: document.getElementById('probability-percent'),
+            zValueOutput: document.getElementById('z-value'),
+            zFormulaOutput: document.getElementById('z-formula'), // Usado para mostrar la probabilidad de tabla (p)
+            probabilityText: document.getElementById('probability-text'),
+            probabilityDate: document.getElementById('probability-date'),
             
             // Calculadora 2: Probabilidad -> Días
             targetProbInput: document.getElementById('target-prob'),
-            resultDaysContainer: document.getElementById('days-result'), // Contenedor principal
-            resultDays: document.getElementById('days-needed'), // Días
-            resultDate: document.getElementById('days-date'), // Fecha
-            zInverseOutput: document.getElementById('z-inverse'), // Valor Z Inverso
-            daysFormulaOutput: document.getElementById('days-formula'), // Fórmula Días
-            daysText: document.getElementById('days-text'), // Texto de resultado
+            resultDaysContainer: document.getElementById('days-result'),
+            resultDays: document.getElementById('days-needed'),
+            resultDate: document.getElementById('days-date'),
+            zInverseOutput: document.getElementById('z-inverse'),
+            daysFormulaOutput: document.getElementById('days-formula'),
+            daysText: document.getElementById('days-text'),
             
             // Tabla y Análisis
-            probabilityTable: document.getElementById('probability-table'), // Era 'probability-table-tbody', pero el tbody no tiene ese ID. Usamos el ID del <tbody> real.
-            rangeAnalysis: document.getElementById('range-analysis'), // ID corregido de 'resultRangeAnalysis'
-            
+            probabilityTable: document.getElementById('probability-table'), 
+            rangeAnalysis: document.getElementById('range-analysis'), 
             probabilitySection: document.getElementById('content-probability'),
         };
 
         // Escuchar cambios en los inputs para recalcular automáticamente
-        this.elements.targetDaysInput.addEventListener('input', () => this.calculateProbability());
-        this.elements.targetProbInput.addEventListener('input', () => this.calculateDays());
+        // AGREGANDO VERIFICACIÓN DE NULL
+        if (this.elements.targetDaysInput) {
+            this.elements.targetDaysInput.addEventListener('input', () => this.calculateProbability());
+        }
+        if (this.elements.targetProbInput) {
+            this.elements.targetProbInput.addEventListener('input', () => this.calculateDays());
+            // Valor por defecto si es necesario (ej. 95)
+            if (this.elements.targetProbInput.value === '') {
+                this.elements.targetProbInput.value = 95;
+            }
+        }
     }
 
     /**
      * Función principal para renderizar la vista probabilística y configurar valores iniciales.
      */
     render() {
-        // Validación de cálculos
-        if (!this.appState.calculations || this.appState.calculations.projectDuration === 0) {
-            // Esto solo oculta el contenido. Si necesitas reemplazar el HTML completo, necesitas el HTML de fallback.
-            this.elements.probabilitySection.classList.add('hidden');
+        if (!this.appState.calculations || !this.appState.calculations.projectDuration || this.appState.calculations.projectDuration <= 0) {
+            if (this.elements.probabilitySection) {
+                this.elements.probabilitySection.classList.add('hidden');
+            }
             return;
         }
         
-        this.elements.probabilitySection.classList.remove('hidden');
+        if (this.elements.probabilitySection) {
+            this.elements.probabilitySection.classList.remove('hidden');
+        }
 
         const projectDuration = this.appState.calculations.projectDuration;
         
         // 1. Mostrar la duración crítica como valor objetivo inicial (días)
-        this.elements.targetDaysInput.value = projectDuration.toFixed(1); 
+        if (this.elements.targetDaysInput) {
+            this.elements.targetDaysInput.value = projectDuration.toFixed(1); 
+        }
         
         // 2. Inicializar ambos cálculos
         this.calculateProbability(); 
-        this.calculateDays(); // Inicializar días necesarios para un porcentaje por defecto (ej. 95%)
+        this.calculateDays();
         
         // 3. Renderizar la tabla de rangos y el análisis
         this.renderRangeTable();
@@ -75,40 +88,50 @@ export class ProbabilityController {
         
         const projectDuration = calculations.projectDuration;
         const projectSigma = calculations.projectSigma;
-        const targetDays = parseFloat(this.elements.targetDaysInput.value);
         
-        this.elements.resultProbContainer.classList.remove('hidden'); // Mostrar resultados
+        // Usar 0 si el input es null/undefined por si acaso
+        const targetDays = parseFloat(this.elements.targetDaysInput?.value) || 0;
+        
+        if (this.elements.resultProbContainer) {
+            this.elements.resultProbContainer.classList.remove('hidden');
+        }
 
         if (isNaN(targetDays) || targetDays < 0 || projectSigma === 0) {
-            this.elements.resultProb.textContent = (projectSigma === 0) ? '0%' : 'N/A';
-            this.elements.probabilityText.textContent = (projectSigma === 0) ? 'Riesgo 0. Desviación 0.' : 'Ingrese días válidos';
-            this.elements.zValueOutput.textContent = '';
-            this.elements.zFormulaOutput.textContent = '';
-            this.elements.probabilityDate.textContent = '';
+            const message = (projectSigma === 0) ? 'Riesgo 0. Desviación 0.' : 'Ingrese días válidos';
+            
+            if (this.elements.resultProb) this.elements.resultProb.textContent = (projectSigma === 0) ? '100 %' : 'N/A';
+            if (this.elements.probabilityText) this.elements.probabilityText.textContent = message;
+            if (this.elements.zValueOutput) this.elements.zValueOutput.textContent = '';
+            if (this.elements.zFormulaOutput) this.elements.zFormulaOutput.textContent = '';
+            if (this.elements.probabilityDate) this.elements.probabilityDate.textContent = (projectSigma === 0) ? `Fecha: ${DateUtils.format(DateUtils.addDays(startDate, projectDuration))}` : '';
             return;
         }
 
-        const { probability, zScore, zTableProb } = ProbabilityService.calculateProbabilityForDays(
+        // LLAMADA CORREGIDA: Usamos el método existente y getZScore por separado
+        const probability = ProbabilityService.calculateProbabilityForDays(
             targetDays,
             projectDuration,
-            projectSigma,
-            true // Devuelve detalles
+            projectSigma
         );
+        const zScore = ProbabilityService.getZScore(targetDays, projectDuration, projectSigma);
+        const zTableProb = probability / 100; // Probabilidad de tabla (p) en formato decimal
         
         const targetDate = DateUtils.addDays(startDate, targetDays);
 
         // Rellenar resultados en el DOM
-        this.elements.resultProb.textContent = `${probability.toFixed(2)} %`;
-        this.elements.zValueOutput.textContent = `Valor Z: ${zScore.toFixed(3)}`;
-        this.elements.zFormulaOutput.textContent = `Probabilidad de Tabla (p): ${zTableProb.toFixed(4)}`;
-        this.elements.probabilityDate.textContent = `Fecha de finalización objetivo: ${DateUtils.format(targetDate)}`;
+        if (this.elements.resultProb) this.elements.resultProb.textContent = `${probability.toFixed(2)} %`;
+        if (this.elements.zValueOutput) this.elements.zValueOutput.textContent = `Valor Z: ${zScore.toFixed(3)}`;
+        if (this.elements.zFormulaOutput) this.elements.zFormulaOutput.textContent = `Probabilidad de Tabla (p): ${zTableProb.toFixed(4)}`;
+        if (this.elements.probabilityDate) this.elements.probabilityDate.textContent = `Fecha de finalización objetivo: ${DateUtils.format(targetDate)}`;
 
-        if (probability > 90) {
-            this.elements.probabilityText.textContent = '¡Alto nivel de confianza! El proyecto tiene una alta probabilidad de completarse a tiempo.';
-        } else if (probability < 50) {
-            this.elements.probabilityText.textContent = 'Bajo nivel de confianza. Se necesitan más días para alcanzar una probabilidad aceptable.';
-        } else {
-            this.elements.probabilityText.textContent = 'Nivel de confianza moderado. Monitoree de cerca la ruta crítica.';
+        if (this.elements.probabilityText) {
+            if (probability > 90) {
+                this.elements.probabilityText.textContent = '¡Alto nivel de confianza! El proyecto tiene una alta probabilidad de completarse a tiempo.';
+            } else if (probability < 50) {
+                this.elements.probabilityText.textContent = 'Bajo nivel de confianza. Se necesitan más días para alcanzar una probabilidad aceptable.';
+            } else {
+                this.elements.probabilityText.textContent = 'Nivel de confianza moderado. Monitoree de cerca la ruta crítica.';
+            }
         }
     }
 
@@ -121,38 +144,49 @@ export class ProbabilityController {
 
         const projectDuration = calculations.projectDuration;
         const projectSigma = calculations.projectSigma;
-        const targetProbPercent = parseFloat(this.elements.targetProbInput.value);
         
-        this.elements.resultDaysContainer.classList.remove('hidden'); // Mostrar resultados
+        // Usar valor de input o 95 por defecto
+        const targetProbPercent = parseFloat(this.elements.targetProbInput?.value) || 95;
+        
+        if (this.elements.resultDaysContainer) {
+            this.elements.resultDaysContainer.classList.remove('hidden');
+        }
 
         if (isNaN(targetProbPercent) || targetProbPercent < 1 || targetProbPercent > 99 || projectSigma === 0) {
-            this.elements.resultDays.textContent = (projectSigma === 0) ? 'N/A' : 'Ingrese prob. (1-99)';
-            this.elements.resultDate.textContent = '';
-            this.elements.zInverseOutput.textContent = '';
-            this.elements.daysFormulaOutput.textContent = '';
-            this.elements.daysText.textContent = (projectSigma === 0) ? 'Riesgo 0. Desviación 0.' : '';
+            const message = (projectSigma === 0) ? 'Riesgo 0. Desviación 0.' : 'Ingrese prob. (1-99)';
+            
+            if (this.elements.resultDays) this.elements.resultDays.textContent = (projectSigma === 0) ? `${projectDuration.toFixed(2)} días` : 'N/A';
+            if (this.elements.resultDate) this.elements.resultDate.textContent = (projectSigma === 0) ? `Fecha: ${DateUtils.format(DateUtils.addDays(startDate, projectDuration))}` : '';
+            if (this.elements.zInverseOutput) this.elements.zInverseOutput.textContent = '';
+            if (this.elements.daysFormulaOutput) this.elements.daysFormulaOutput.textContent = '';
+            if (this.elements.daysText) this.elements.daysText.textContent = message;
             return;
         }
         
-        const { days, zInverse } = ProbabilityService.calculateDaysForProbability(
+        // LLAMADA CORREGIDA: Usamos el método existente y normalInverseCDF por separado
+        const days = ProbabilityService.calculateDaysForProbability(
             targetProbPercent,
             projectDuration,
-            projectSigma,
-            true // Devuelve detalles
+            projectSigma
         );
+        
+        // Obtenemos Z inverso directamente del servicio
+        const zInverse = ProbabilityService.normalInverseCDF(targetProbPercent / 100);
         
         const targetDate = DateUtils.addDays(startDate, days);
 
         // Rellenar resultados en el DOM
-        this.elements.resultDays.textContent = `${days.toFixed(2)} días`;
-        this.elements.resultDate.textContent = `Fecha: ${DateUtils.format(targetDate)}`;
-        this.elements.zInverseOutput.textContent = `Valor Z inverso: ${zInverse.toFixed(3)}`;
-        this.elements.daysFormulaOutput.textContent = `Fórmula: μ + Zσ`;
+        if (this.elements.resultDays) this.elements.resultDays.textContent = `${days.toFixed(2)} días`;
+        if (this.elements.resultDate) this.elements.resultDate.textContent = `Fecha: ${DateUtils.format(targetDate)}`;
+        if (this.elements.zInverseOutput) this.elements.zInverseOutput.textContent = `Valor Z inverso: ${zInverse.toFixed(3)}`;
+        if (this.elements.daysFormulaOutput) this.elements.daysFormulaOutput.textContent = `Fórmula: μ + Zσ`;
         
-        if (days > projectDuration) {
-            this.elements.daysText.textContent = `Para un ${targetProbPercent}% de probabilidad, debes permitir ${(days - projectDuration).toFixed(2)} días adicionales al esperado.`;
-        } else {
-            this.elements.daysText.textContent = 'La duración requerida es menor que la duración esperada. ¡Excelente colchón de tiempo!';
+        if (this.elements.daysText) {
+            if (days > projectDuration) {
+                this.elements.daysText.textContent = `Para un ${targetProbPercent}% de probabilidad, debes permitir ${(days - projectDuration).toFixed(2)} días adicionales al esperado.`;
+            } else {
+                this.elements.daysText.textContent = 'La duración requerida es menor que la duración esperada. ¡Excelente colchón de tiempo!';
+            }
         }
     }
 
@@ -177,7 +211,7 @@ export class ProbabilityController {
             );
             const targetDate = DateUtils.addDays(this.appState.startDate, targetDays);
             
-            const daysText = targetDays.toFixed(2) === projectDuration.toFixed(2) 
+            const daysText = (Math.abs(targetDays - projectDuration) < 0.01) // Comparación para punto flotante
                 ? `${targetDays.toFixed(2)} (TE)` 
                 : targetDays.toFixed(2);
             
@@ -195,8 +229,6 @@ export class ProbabilityController {
         this.elements.probabilityTable.innerHTML = html;
 
         // Mostrar el análisis de rango
-        // Se corrigió el uso del ID correcto: 'range-analysis'
-        
         if (projectSigma === 0) {
             this.elements.rangeAnalysis.innerHTML = '<p class="text-center p-4 text-green-700">La desviación estándar es cero. La duración del proyecto es determinística.</p>';
             return;
@@ -231,7 +263,7 @@ export class ProbabilityController {
             <div class="p-4 bg-white rounded-lg shadow-inner border-l-4 border-indigo-600">
                 <p class="font-semibold text-sm text-gray-600 mb-1">Probabilidad Esperada</p>
                 <p class="text-xl font-bold text-indigo-600">50.00 %</p>
-                <p class="text-xs text-gray-500">Probabilidad de terminar el proyecto exactamente en μ días.</p>
+                <p class="text-xs text-gray-500">Probabilidad de terminar el proyecto en ${projectDuration.toFixed(2)} días o antes.</p>
             </div>
         `;
     }
