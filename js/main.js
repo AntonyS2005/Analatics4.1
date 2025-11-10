@@ -141,54 +141,69 @@ function loadExample() {
 }
 
 /**
- * 🎯 Lógica Corregida: Auto-relleno (Tiempo Fijo)
- * Rellena los otros dos campos (m y b si se edita a, etc.) SOLO si:
- * 1. El valor ingresado es positivo.
- * 2. Solo hay UN valor positivo definido entre a, m y b después de la edición.
+ * Lógica de auto-relleno (Tiempo Fijo) con manejo de foco.
  */
 function updateActivity(id, field, value) {
     const activity = appState.activities.find(a => a.id === id);
     if (!activity) return;
     
+    // Usamos el valor del input, o 0 si está vacío/inválido
     const parsedValue = parseFloat(value) || 0;
 
     if (['a', 'm', 'b'].includes(field)) {
+        
         // 1. Asignar el nuevo valor
         activity[field] = parsedValue;
         
-        // 2. Contar cuántos campos (a, m, b) tienen un valor > 0
+        // 2. Contar cuántos campos (a, m, b) tienen un valor > 0 DESPUÉS de la asignación
         const definedCount = ['a', 'm', 'b'].filter(f => activity[f] > 0).length;
 
         // 3. Aplicar lógica de tiempo fijo: Si solo UNO tiene valor, rellenar los demás
         if (definedCount === 1 && parsedValue > 0) {
-            // El usuario solo definió un valor. Asumimos tiempo fijo (A=M=B).
+            // Se detectó un tiempo fijo: Rellenar la actividad en memoria
             activity.a = parsedValue;
             activity.m = parsedValue;
             activity.b = parsedValue;
             
-            // Rerenderizar la tabla inmediatamente para que el usuario vea el cambio
-            renderActivitiesTable(); 
+            // 🎯 Solución al problema de UX: Actualizar el DOM directamente
+            const row = document.querySelector(`input[data-id="${id}"][data-field="${field}"]`).closest('tr');
+            if (row) {
+                 // Itera y actualiza los inputs sin perder el foco
+                ['a', 'm', 'b'].forEach(f => {
+                    const input = row.querySelector(`input[data-field="${f}"]`);
+                    // Solo actualiza si el valor realmente cambió para evitar el molesto parpadeo
+                    if (input && parseFloat(input.value) !== parsedValue) {
+                        input.value = parsedValue > 0 ? parsedValue : '';
+                    }
+                });
+            }
+            // ⚠️ IMPORTANTE: No llamamos a renderActivitiesTable() aquí.
         } 
-        // Si definedCount es 2 o 3, el usuario está haciendo un cálculo PERT. No rellenamos.
-        // Si definedCount es 0, el usuario ingresó 0 o eliminó el valor. No rellenamos.
-
     } else {
-        // Campo diferente (nombre o predecesores)
+        // Campo diferente (name o predecessors)
         activity[field] = value;
     }
     
-    // Recalcular y renderizar los resultados de la red
-    recalculateAndRender();
+    // Recalcular los resultados y renderizar las tablas de Resultados, Red, y Gantt.
+    // Omitimos la tabla de actividades si el campo editado fue un tiempo A, M, o B.
+    const isTimeField = ['a', 'm', 'b'].includes(field);
+    recalculateAndRender(!isTimeField); 
 }
 
-function recalculateAndRender() {
+/**
+ * Recalcula y renderiza el proyecto. Permite omitir la tabla de actividades.
+ */
+function recalculateAndRender(shouldRenderActivities = true) {
     const calculator = new PertCalculator(appState.activities);
     appState.calculations = calculator.calculate();
     
-    renderActivitiesTable();
+    if (shouldRenderActivities) {
+        renderActivitiesTable();
+    }
     renderResultsTable();
     renderCurrentTab();
 }
+
 
 function renderActivitiesTable() {
     const tbody = document.getElementById('activities-table');
@@ -218,13 +233,13 @@ function renderActivitiesTable() {
                 <input type="text" value="${act.predecessors}" data-id="${act.id}" data-field="predecessors" placeholder="A,B" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300">
             </td>
             <td class="border border-gray-300 p-2">
-                <input type="number" value="${displayValue(act.a)}" data-id="${act.id}" data-field="a" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
+                <input type="number" value="${displayValue(act.a)}" data-id="${act.id}" data-field="a" class="time-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2">
-                <input type="number" value="${displayValue(act.m)}" data-id="${act.id}" data-field="m" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
+                <input type="number" value="${displayValue(act.m)}" data-id="${act.id}" data-field="m" class="time-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2">
-                <input type="number" value="${displayValue(act.b)}" data-id="${act.id}" data-field="b" class="activity-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
+                <input type="number" value="${displayValue(act.b)}" data-id="${act.id}" data-field="b" class="time-input w-full px-2 py-1 border rounded focus:ring-2 focus:ring-indigo-300" step="0.1" min="0">
             </td>
             <td class="border border-gray-300 p-2 text-center">
                 <button data-delete-id="${act.id}" class="btn-delete-activity text-red-600 hover:text-red-800 transition p-1" title="Eliminar Actividad">
@@ -237,8 +252,17 @@ function renderActivitiesTable() {
         </tr>
     `).join('');
     
+    // 🎯 Manejo de eventos: 'change' para texto, 'blur' para números
     tbody.querySelectorAll('.activity-input').forEach(input => {
-        input.addEventListener('change', (e) => {
+        input.addEventListener('change', (e) => { // 'change' para name y predecessors
+            const id = parseInt(e.target.getAttribute('data-id'));
+            const field = e.target.getAttribute('data-field');
+            updateActivity(id, field, e.target.value);
+        });
+    });
+
+    tbody.querySelectorAll('.time-input').forEach(input => {
+        input.addEventListener('blur', (e) => { // 'blur' para a, m, b
             const id = parseInt(e.target.getAttribute('data-id'));
             const field = e.target.getAttribute('data-field');
             updateActivity(id, field, e.target.value);
