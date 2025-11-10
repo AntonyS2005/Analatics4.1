@@ -26,17 +26,23 @@ export class PertCalculator {
 
     /**
      * Construye el grafo de actividades.
-     * 🚨 MODIFICACIÓN CLAVE: Redondea la duración esperada (te) de cada actividad.
+     * 1. Redondea la duración esperada (te) para los cálculos de la red.
+     * 2. Guarda el objeto original (original) para el cálculo preciso de la varianza.
      */
     _buildGraph() {
         this.activities.forEach(act => {
+            // Guardamos la actividad original para el cálculo de varianza
+            const originalActivity = act;
+
+            // Creamos una versión de la actividad con 'te' redondeado para la red
+            const roundedActivity = {
+                ...act,
+                te: Math.round(act.te) // 🎯 REDONDEO CLAVE para tiempos enteros
+            };
+
             this.graph[act.name] = {
-                activity: {
-                    ...act,
-                    // Aplicamos Math.round() a la duración esperada (te) para que todos 
-                    // los cálculos de tiempo posteriores utilicen un entero.
-                    te: Math.round(act.te) 
-                },
+                activity: roundedActivity, // Usado para ES/EF/LS/LF (con TE entero)
+                original: originalActivity, // Usado para calcular la varianza del proyecto
                 preds: act.getPredecessorsList()
             };
         });
@@ -53,13 +59,11 @@ export class PertCalculator {
 
             let startTime = 0;
             if (node.preds.length > 0) {
-                // startTime (ES) será entero, ya que calculateEF devuelve EF (que es entero)
                 startTime = Math.max(...node.preds.map(calculateEF));
             }
 
-            this.es[nodeName] = startTime;
-            // node.activity.te ya está redondeado, por lo que EF también será entero.
-            this.ef[nodeName] = startTime + node.activity.te;
+            this.es[nodeName] = startTime; // Será entero
+            this.ef[nodeName] = startTime + node.activity.te; // Será entero
             memo[nodeName] = this.ef[nodeName];
 
             return this.ef[nodeName];
@@ -69,8 +73,7 @@ export class PertCalculator {
     }
 
     _calculateBackwardPass() {
-        // projectDuration es entero (el máximo de los EF enteros)
-        const projectDuration = Math.max(0, ...Object.values(this.ef)); 
+        const projectDuration = Math.max(0, ...Object.values(this.ef));
         const sortedNodes = Object.keys(this.graph).sort((a, b) => this.ef[b] - this.ef[a]);
 
         sortedNodes.forEach(name => {
@@ -81,11 +84,9 @@ export class PertCalculator {
             if (successors.length === 0) {
                 this.lf[name] = projectDuration;
             } else {
-                // lf será entero (mínimo de los LS, que son enteros)
                 this.lf[name] = Math.min(...successors.map(s => this.ls[s.activity.name]));
             }
 
-            // node.activity.te ya está redondeado, por lo que LS también será entero.
             this.ls[name] = this.lf[name] - node.activity.te;
             this.slack[name] = this.lf[name] - this.ef[name];
         });
@@ -94,18 +95,19 @@ export class PertCalculator {
     }
 
     _findCriticalPath() {
+        // La comparación con 0.001 es buena práctica incluso con enteros para manejar errores de coma flotante
         return Object.keys(this.graph).filter(name =>
-            // La holgura (slack) será 0 para la ruta crítica, ya que todos los tiempos son enteros
             Math.abs(this.slack[name]) < 0.001
         );
     }
 
     _buildResults(criticalPath, projectDuration) {
         const results = new ProjectCalculations();
+        
+        // 1. Asigna los resultados a las actividades
         results.activities = this.activities.map(act => ({
         ...act,
-        // Los valores originales (con decimales, si los hubo) se mantienen aquí,
-        // pero ES, EF, LS, LF y slack serán los valores enteros calculados.
+        // Los valores originales de TE, Variance y Sigma se mantienen aquí.
         te: act.te,
         variance: act.variance,
         sigma: act.sigma,
@@ -117,16 +119,22 @@ export class PertCalculator {
           isCritical: criticalPath.includes(act.name)
         }));
 
+        // 2. Calcula la duración y la ruta crítica
         results.projectDuration = projectDuration;
         results.criticalPath = criticalPath;
+        
+        // 3. Calcula la Varianza del Proyecto (usando el objeto original)
         results.projectVariance = criticalPath.reduce((sum, name) => {
-        // NOTA: Para la varianza del proyecto, se recomienda usar la varianza (act.variance) ORIGINAL,
-        // que no se redondeó, para mantener la precisión estadística.
-        const node = this.graph[name];
-          return sum + (node ? node.activity.variance : 0);
-          }, 0);
-          results.projectSigma = Math.sqrt(results.projectVariance);
+            const node = this.graph[name];
+            // 🎯 SOLUCIÓN AL NaN: Usamos la varianza del objeto 'original'
+            return sum + (node && node.original ? node.original.variance : 0);
+        }, 0);
 
-          return results;
+        // 4. Calcula la Desviación Estándar (previene NaN si la varianza es negativa por error)
+        results.projectSigma = results.projectVariance >= 0 
+                               ? Math.sqrt(results.projectVariance)
+                               : 0;
+
+        return results;
     }
 }
